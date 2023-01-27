@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.logging.Logger;
 
 public class JukeFrame extends JFrame implements ActionListener {
 
@@ -24,6 +25,8 @@ public class JukeFrame extends JFrame implements ActionListener {
     static boolean playNextSongFlag = false; //flag if the next song should start playing
     static boolean loopFlag = false; //flag for loop
     static boolean randomFlag = false; //flag for random
+
+    Logger logger = Logger.getLogger(JukeFrame.class.getName());
 
     JButton playButton;
     JButton importButton;
@@ -60,6 +63,7 @@ public class JukeFrame extends JFrame implements ActionListener {
         ImageIcon randomIcon = new ImageIcon(new ImageIcon("shuffle.png").getImage().getScaledInstance(20, 20, Image.SCALE_DEFAULT));
         ImageIcon loopIcon = new ImageIcon(new ImageIcon("loop.png").getImage().getScaledInstance(20, 20, Image.SCALE_DEFAULT));
         ImageIcon pauseIcon = new ImageIcon(new ImageIcon("pause.png").getImage().getScaledInstance(35, 35, Image.SCALE_DEFAULT));
+        Image backgroundImage = Toolkit.getDefaultToolkit().getImage("background.png");
 
         JPanel importPanel = new JPanel();
         JPanel listPanel = new JPanel();
@@ -163,7 +167,6 @@ public class JukeFrame extends JFrame implements ActionListener {
                     if (playNextSongFlag) {
                         if (loopFlag) {
                             songPlay(playlistIndex);
-                            System.out.println("replays the current song");
                         } else {
                             playNext();
                         }
@@ -204,20 +207,22 @@ public class JukeFrame extends JFrame implements ActionListener {
         stopButton.setBounds(592, 50, 45, 45);
         stopButton.addActionListener(e -> stopButtonPressed());
 
+
         importPanel.setBounds(0, 0 , 300, 300);
-        importPanel.setBackground(Color.gray);
         importPanel.setLayout(null);
+        importPanel.setOpaque(false);
         importPanel.add(importButton);
+
 
 
         listPanel.setBounds(300, 0, 700, 300);
         listPanel.setLayout(null);
+        listPanel.setOpaque(false);
         listPanel.add(listScroll);
-        listPanel.setBackground(Color.black);
 
         functionsPanel.setBounds(0, 300, 1000, 200);
-        functionsPanel.setBackground(Color.pink);
         functionsPanel.setLayout(null);
+        functionsPanel.setOpaque(false);
         functionsPanel.add(songProgress);
         functionsPanel.add(backwardButton);
         functionsPanel.add(playButton);
@@ -227,12 +232,21 @@ public class JukeFrame extends JFrame implements ActionListener {
         functionsPanel.add(loopButton);
 
 
+
         this.setSize(1000, 500);
         this.setTitle("Jukebox");
         this.setIconImage(logoIcon.getImage());
+        this.setContentPane(new JPanel() {
+            @Override
+            public void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, null);
+            }
+        });
         this.add(importPanel);
         this.add(listPanel);
         this.add(functionsPanel);
+
 
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLayout(null);
@@ -385,7 +399,6 @@ public class JukeFrame extends JFrame implements ActionListener {
         } while (randomIndexes.contains(randomIndex));
 
         randomIndexes.add(randomIndex);
-
 
         return randomIndex;
     }
