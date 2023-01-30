@@ -1,16 +1,42 @@
 package dit.hua.gr;
 
-import javax.swing.*;
+import javax.swing.JFrame;
+import javax.swing.JTable;
+import javax.swing.JButton;
+import javax.swing.JScrollPane;
+import javax.swing.JPanel;
+import javax.swing.JToggleButton;
+import javax.swing.JFileChooser;
+import javax.swing.JProgressBar;
+import javax.swing.ImageIcon;
+import javax.swing.DefaultListModel;
 import javax.swing.filechooser.FileFilter;
-import java.awt.*;
-import java.awt.event.*;
-
+import javax.swing.table.DefaultTableModel;
+import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseAdapter;
 import gr.hua.dit.oop2.musicplayer.*;
-
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.Parser;
+import org.apache.tika.parser.mp3.Mp3Parser;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 import java.io.File;
+import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -26,7 +52,14 @@ public class JukeFrame extends JFrame implements ActionListener {
     static boolean loopFlag = false; //flag for loop
     static boolean randomFlag = false; //flag for random
 
-    Logger logger = Logger.getLogger(JukeFrame.class.getName());
+    int[] duration; //array with songs duration in seconds;
+
+    String[][] data = new String[0][0]; //data array for JTable
+
+    String categories[] = {"Name", "Artist", "Album","Year", "Genre", "Duration"};
+
+    DefaultTableModel tableModel;
+    JTable table;
 
     JButton playButton;
     JButton importButton;
@@ -43,7 +76,6 @@ public class JukeFrame extends JFrame implements ActionListener {
     DefaultListModel<String> playlist;
     ArrayList<Integer> randomIndexes;
     JScrollPane listScroll;
-    JList songsList;
 
     InputStream song;
 
@@ -55,26 +87,32 @@ public class JukeFrame extends JFrame implements ActionListener {
 
         seconds = 0;
 
-        ImageIcon logoIcon = new ImageIcon("logo.png");
-        ImageIcon playIcon = new ImageIcon(new ImageIcon("play.png").getImage().getScaledInstance(35, 35, Image.SCALE_DEFAULT)); //resizes icon
-        ImageIcon stopIcon = new ImageIcon(new ImageIcon("stop.png").getImage().getScaledInstance(28, 28, Image.SCALE_DEFAULT));
-        ImageIcon forwardIcon = new ImageIcon(new ImageIcon("for.png").getImage().getScaledInstance(25, 25, Image.SCALE_DEFAULT));
-        ImageIcon backwardIcon = new ImageIcon(new ImageIcon("back.png").getImage().getScaledInstance(25, 25, Image.SCALE_DEFAULT));
-        ImageIcon randomIcon = new ImageIcon(new ImageIcon("shuffle.png").getImage().getScaledInstance(20, 20, Image.SCALE_DEFAULT));
-        ImageIcon loopIcon = new ImageIcon(new ImageIcon("loop.png").getImage().getScaledInstance(20, 20, Image.SCALE_DEFAULT));
-        ImageIcon pauseIcon = new ImageIcon(new ImageIcon("pause.png").getImage().getScaledInstance(35, 35, Image.SCALE_DEFAULT));
-        Image backgroundImage = Toolkit.getDefaultToolkit().getImage("background.png");
+        ImageIcon logoIcon = new ImageIcon("classes/logo.png");
+        ImageIcon playIcon = new ImageIcon(new ImageIcon("classes/play.png").getImage().getScaledInstance(35, 35, Image.SCALE_DEFAULT)); //resizes icon
+        ImageIcon stopIcon = new ImageIcon(new ImageIcon("classes/stop.png").getImage().getScaledInstance(28, 28, Image.SCALE_DEFAULT));
+        ImageIcon forwardIcon = new ImageIcon(new ImageIcon("classes/for.png").getImage().getScaledInstance(25, 25, Image.SCALE_DEFAULT));
+        ImageIcon backwardIcon = new ImageIcon(new ImageIcon("classes/back.png").getImage().getScaledInstance(25, 25, Image.SCALE_DEFAULT));
+        ImageIcon randomIcon = new ImageIcon(new ImageIcon("classes/shuffle.png").getImage().getScaledInstance(20, 20, Image.SCALE_DEFAULT));
+        ImageIcon loopIcon = new ImageIcon(new ImageIcon("classes/loop.png").getImage().getScaledInstance(20, 20, Image.SCALE_DEFAULT));
+        ImageIcon pauseIcon = new ImageIcon(new ImageIcon("classes/pause.png").getImage().getScaledInstance(35, 35, Image.SCALE_DEFAULT));
+        Image backgroundImage = Toolkit.getDefaultToolkit().getImage("classes/background.png");
 
         JPanel importPanel = new JPanel();
         JPanel listPanel = new JPanel();
         JPanel functionsPanel = new JPanel();
 
-        /*String collumns[] = {"Song", "Artist", "Genre"};
-        JTable songsList = new JTable(, collumns);*/
+        tableModel = new DefaultTableModel(data, categories);
 
-        songsList = new JList(playlist);
-        songsList.setBounds(0, 0, 700, 300);
-        songsList.addMouseListener(new MouseAdapter() {
+        table = new JTable(tableModel) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        table.getTableHeader().setReorderingAllowed(false);
+
+        table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if(e.getClickCount() == 2 ) {
@@ -82,16 +120,15 @@ public class JukeFrame extends JFrame implements ActionListener {
                     if (p.getStatus().equals(Player.Status.PLAYING) || p.getStatus().equals(Player.Status.PAUSED)) {
                         p.stop();
                     }
-                    playlistIndex = songsList.getSelectedIndex();
+                    playlistIndex = table.getSelectedRow();
                     songPlay(playlistIndex);
                     playNextSongFlag = true;
-                }
-
             }
-        });
+        } });
 
-        listScroll = new JScrollPane(songsList);
+        listScroll = new JScrollPane();
         listScroll.setBounds(0, 0, 700, 300);
+        listScroll.setViewportView(table);
 
         importButton = new JButton();
         playButton = new JButton();
@@ -101,9 +138,10 @@ public class JukeFrame extends JFrame implements ActionListener {
         randomButton = new JToggleButton();
         loopButton = new JToggleButton();
 
-        songProgress = new JProgressBar(0, 3000);
+        songProgress = new JProgressBar();
+        songProgress.setMinimum(0);
         songProgress.setBounds(173, 120, 614, 30);
-        songProgress.setForeground(Color.RED);
+        songProgress.setForeground(new Color(0x086a7f));
         songProgress.setStringPainted(true);
         songProgress.setString("0:00/0:00");
 
@@ -185,9 +223,15 @@ public class JukeFrame extends JFrame implements ActionListener {
 
                 minutes = (microseconds / 1000000) / 60;
                 seconds = (microseconds / 1000000) % 60;
+                String secondsString = String.format("%02d", seconds);
 
-                songProgress.setString(minutes + ":" + seconds);
+                songProgress.setValue((int)(microseconds / 1000000));
 
+                if (randomFlag) {
+                    songProgress.setString(minutes + ":" + secondsString + "/" + data[randomIndex][5]);
+                } else {
+                    songProgress.setString(minutes + ":" + secondsString + "/" + data[playlistIndex][5]);
+                }
             }
         });
 
@@ -295,6 +339,7 @@ public class JukeFrame extends JFrame implements ActionListener {
                 for (int i = 0; i < directoryContent.length; i++) {
                     if (directoryContent[i].getAbsolutePath().endsWith(".mp3")) {
                         playlist.addElement(directoryContent[i].getAbsolutePath());
+
                     }
                 }
             } else if(songfile.getName().endsWith(".m3u")){
@@ -306,8 +351,50 @@ public class JukeFrame extends JFrame implements ActionListener {
             } else {
                 System.out.println("This file is not supported. Please select a directory or an m3u file");
             }
+                data = new String[playlist.size()][6];
+                duration = new int[playlist.size()];
+                for (int i = 0; i < playlist.size(); i++) {
+                        try {
 
-        }
+                            InputStream input = new FileInputStream(new File(playlist.get(i)));
+                            File tempfile = new File(playlist.get(i));
+                            ContentHandler handler = new DefaultHandler();
+                            Metadata metadata = new Metadata();
+                            Parser parser = new Mp3Parser();
+                            ParseContext parseContext = new ParseContext();
+                            parser.parse(input, handler, metadata, parseContext);
+
+                            data[i][0] = tempfile.getName().substring(0, tempfile.getName().lastIndexOf('.')); //saves filename without the path or the extension
+                            data[i][1] = metadata.get("xmpDM:artist");
+                            data[i][2] = metadata.get("xmpDM:album");
+                            data[i][3] = metadata.get("xmpDM:releaseDate");
+                            data[i][4] = metadata.get("xmpDM:genre");
+
+                            duration[i] = (int)Float.parseFloat(metadata.get("xmpDM:duration"));
+                            int metaseconds = duration[i] % 60;
+                            int metaminutes = duration[i] / 60;
+
+                            data[i][5] =  metaminutes + ":" + String.format("%02d", metaseconds);
+
+
+                        } catch (FileNotFoundException e) {
+                            throw new RuntimeException(e);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (SAXException e) {
+                            throw new RuntimeException(e);
+                        } catch (TikaException e) {
+                            throw new RuntimeException(e);
+                        }
+                }
+
+                tableModel = new DefaultTableModel(data, categories);
+                table.setModel(tableModel);
+                listScroll.setViewportView(table);
+
+
+
+            }
 
         importFileChooser.setAcceptAllFileFilterUsed(false);
     }
@@ -333,7 +420,11 @@ public class JukeFrame extends JFrame implements ActionListener {
 
     public void backwardButtonPressed() {
         stopButtonPressed();
-        songPlay(playlistIndex);
+        if (randomFlag) {
+            songPlay(randomIndex);
+        } else {
+            songPlay(playlistIndex);
+        }
         playNextSongFlag = true;
 
 
@@ -377,6 +468,7 @@ public class JukeFrame extends JFrame implements ActionListener {
     }
 
     public void songPlay(int index) {
+        songProgress.setMaximum(duration[index]);
         try {
             song = new FileInputStream(playlist.get(index));
         } catch (FileNotFoundException e) {
